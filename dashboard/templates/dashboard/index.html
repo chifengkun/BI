@@ -1,0 +1,292 @@
+{%load static%}
+<!DOCTYPE html>
+<html lang="zh">
+	<head>
+		<meta charset="utf-8"/>
+		<title>Bussiness Intelligence</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+		<meta 
+		  name="viewport"
+		  content="width=device-width, initial-scale=1, maximum-scale=11"
+		/>
+		<meta http-equiv="X-UA-Compatible" content="IE-Edge" />
+		<link rel="stylesheet" href="{% static 'dashboard/sdk/sdk.css'%}" />
+		<link rel="stylesheet" href="{% static 'dashboard/sdk/helper.css'%}" />
+		<style>
+			html,
+			body,
+			.app-wrapper {
+			position: relative;
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+	</style>
+	</head>
+	<body>
+		<div id="root" class="app-wrapper"></div>
+		<script src="{% static 'dashboard/sdk/sdk.js'%}"></script>
+		<script type="text/javascript">
+			(function() {
+				let amis = amisRequire('amis/embed');
+				let amisJSON = {
+				  "type": "page",
+				  "body": [
+				  {
+					"type": "form",
+					"title": "条件筛选",
+					"actionType": "reload",
+					"target": "crud",
+					"body": [
+					  {
+						"type": "condition-builder",
+						"label": "条件组件",
+						"name": "conditions",
+						"description": "适合让用户自己拼查询条件，然后后端根据数据生成 query where",
+						"fields": [
+							{
+								'label':"金额",
+								'type':'number',
+								'name': 'order.price',
+								'operators':['equal','not_equal','less','less_or_equal','greater','greater_or_equal','between','not_between']
+							},
+							{
+								'label':"订单状态",
+								'type':'select',
+								'name': 'order.status',
+								'options':[
+									{'label':'未支付','value':'PE'},
+									{'label':'支付成功','value':'SU'},
+									{'label':'取消','value':'CA'},
+									{'label':'过期','value':'OV'},
+									{'label':'退款','value':'RE'},
+								]
+							},
+							{
+								'label':"下单时间",
+								'type':'datetime',
+								'name': 'order.creat_time',
+								'operators':['equal','not_equal','less','less_or_equal','greater','greater_or_equal','between','not_between']
+							},
+							{
+								'label':"课程ID",
+								'type':'number',
+								'name': 'course.cid',
+								'operators':['equal','not_equal','less','less_or_equal','greater','greater_or_equal','between','not_between']
+							},
+							{
+								'label':"课程名称",
+								'type':'text',
+								'name': 'course.title',
+								'operators':['equal','not_equal','like','not_like','starts_with','ends_with']
+							},
+						]
+					  }
+					]
+				  },
+				  {
+					"type": "crud",
+					"name": "crud",
+					"api": {
+						"method":"post",
+						"url":"/api/post_order",
+						"headers":{
+							"X-CSRFToken":"{{csrf_token}}"
+						}
+					},
+					"syncLocation": false,
+					"affixHeader":false,
+					"headerToolbar":[
+						{
+							"type":"action",
+							"actionType":'reload',
+							"target":"pie?sid=${sid},bar?sid=${sid},line?sid=${sid},total_income?sid=${sid}",
+							'label':'刷新图表',
+							'level':'primary'
+						},
+						{
+						"type":"action",
+						"actionType":"dialog",
+						'label':'发送邮件',
+						'level':'primary',
+						'dialog':{
+							'title':'请填写邮箱',
+							"actions":[
+								{
+								"label":"提交",
+								"actionType":"ajax",
+								"primary":true,
+								"type":"button",
+								"api":{
+									"method":"post",
+									"url":"api/send_email?sid=${sid}",
+									"headers":{
+										"X-CSRFToken":"{{csrf_token}}"
+											}
+										}
+									}
+								],
+								"body": {
+									"type":"form",
+									"body":[
+										{
+										"type":"input-email",
+										"name":"email",
+										"required":true,
+										"label":"邮箱",
+										"placeholder":"请输入邮箱"
+										}
+									]
+								}
+							}
+						},
+					],
+					"columns": [
+					  {% for field in Order_fields %}
+					  {
+					  	'name':"{{field.name}}",
+					  	'label':"{{field.label}}"
+					  },
+					  {% endfor %}
+					]
+				  },
+				  {
+				  	"type":"tabs",
+				  	"className":"mb-5",
+				  	"mode":"chrome",
+				  	"tabs":[
+				  	 {
+				  	 	"title":"主要指标",
+				  	 	"tab":{
+				  	 		"type":"grid-2d",
+						  	"grids":[
+						  	{
+						  		"x":1,
+						  		"y":1,
+						  		"h":1,
+						  		"w":12,
+						  		"height":"auto",
+						  		"align":"center",
+						  		"type":"service",
+						  		"api":"api/post_chart?type=total_income&sid=${sid}",
+						  		"name":"total_income",
+						  		"className":"text-5xl text-primary",
+						  		"body":{
+						  			"type":"tpl",
+						  			"tpl":"总计：${total_income}元",
+						  		},
+						  	},
+						  	{
+						  		"x":1,
+						  		"y":3,
+						  		"h":1,
+						  		"w":4,
+						  		"height":"auto",
+						  		"type": "chart",
+							    "api": "api/post_chart?type=line&sid=${sid}",
+							    "name":"line",
+							    "config":{
+							      "title":{"text":"折线"},
+								  "xAxis": {
+								    "type": 'category',
+								    "data": "${x_data}"
+								  },
+								  "yAxis": {
+								    "type": 'value'
+								  },
+								  "series": [
+								    {
+								      "data": "${y_data}",
+								      "type": 'line',
+								      "smooth": true
+								    }
+								  ]
+								}
+						  	},
+						  	{
+						  		"x":5,
+						  		"y":3,
+						  		"h":1,
+						  		"w":4,
+						  		"height":"auto",
+						  		"type": "chart",
+							    "api": "api/post_chart?type=pie&sid=${sid}",
+							    "name":"pie",
+							    "config":{
+							    	"title":{"text":"渠道来源占比"},
+							    	"tooltip": {"trigger": 'item'},
+							    	"legend": {
+									    "top": '5%',
+									    "left": 'center'
+									  },
+							    	"series":[
+							    		{
+							    			"type":"pie",
+							    			"data":"${platform_data}",
+							    			"radius": ['40%', '70%'],
+									        "avoidLabelOverlap": false,
+									        "itemStyle": 
+									        {
+										        "borderRadius": 10,
+										        "borderColor": '#fff',
+										        "borderWidth": 2},
+										    "label": 
+										    {
+										        "show": false,
+										        "position": 'center'
+									      		},
+									      	"emphasis": {
+									        "label": {
+									          "show": true,
+									          "fontSize": '40',
+									          "fontWeight": 'bold'
+									        	}
+									      	},
+									      	"labelLine": {"show": false},
+							    		}
+							    	]
+							    } 
+						  	},
+						  	{
+						  		"x":9,
+						  		"y":3,
+						  		"h":1,
+						  		"w":4,
+						  		"height":"auto",
+						  		"type": "chart",
+							    "api": "api/post_chart?type=bar&sid=${sid}",
+							    "name":"bar",
+							    "config":{
+							      "title":{"text":"柱状"},
+								  "xAxis": {
+								    "type": 'category',
+								    "data": '${x_data}'
+								  },
+								  "yAxis": {
+								    "type": 'value'
+								  },
+								  "series": [
+								    {
+								      "data": '${y_data}',
+								      "type": 'bar',
+								      "showBackground": true,
+								      "backgroundStyle": {
+								        "color": 'rgba(180, 180, 180, 0.2)'
+								      }
+								    }
+								  ]
+								}
+						  	},
+						  	]
+				  	 	}
+				  	 },
+				  	]
+				  },
+				  ]
+				};
+				let amisScoped = amis.embed('#root',amisJSON);
+			})();
+		</script>
+	</body>
+</html>

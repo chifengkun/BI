@@ -1,0 +1,2 @@
+# BIwebsite
+ django_startproject
