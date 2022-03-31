@@ -1,2 +1,2 @@
-# BIwebsite
- django_startproject
+# 网站搭建初试
+ django_firstproject
